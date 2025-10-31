@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>نظام الفواتير المتقدم - شركة الموج</title>
+    
+    <!-- ===== بداية: إعدادات الأيقونات والـ PWA ===== -->
+    <!-- Favicon for Browser Tab -->
+    <link rel="icon" type="image/png" href="favicon-32.png" sizes="32x32">
+    
+    <!-- Apple Touch Icon for iOS -->
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1e3c72">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="فواتير الموج">
+    <!-- ===== نهاية: إعدادات الأيقونات والـ PWA ===== -->
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=El+Messiri:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-color: #1e3c72;
+            --secondary-color: #2a5298;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --info-color: #17a2b8;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'El Messiri', sans-serif;
+        }
+        
+        body {
+            background: #f5f5f5;
+            padding: 15px;
+            font-size: 13px;
+            color: #333;
+        }
+        
+        /* Invoice Container - Optimized for 5 services */
+        .invoice-container {
+            width: 21cm;
+            min-height: 27.7cm;
+            max-height: 27.7cm;
+            background: white;
+            margin: 0 auto;
+            padding: 12px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Header - Reduced height */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+        
+        .logo-container {
+            flex: 1;
+            text-align: left;
+        }
+        
+        .logo-container img {
+            max-width: 130px;
+        }
+        
+        .company-info {
+            text-align: right;
+            flex: 1;
+        }
+        
+        .company-name-ar {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 2px;
+        }
+        
+        .company-subtitle-ar {
+            font-size: 13px;
+            color: #333;
+            margin-bottom: 2px;
+        }
+        
+        .company-name-en {
+            font-size: 11px;
+            color: #666;
+            font-weight: 600;
+        }
+        
+        .invoice-meta {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .payment-type {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+        
+        .payment-type.cash {
+            color: var(--success-color);
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+        
+        .payment-type.credit {
+            color: var(--warning-color);
+            background-color: rgba(255, 193, 7, 0.1);
+        }
+        
+        .payment-type.bank {
+            color: var(--info-color);
+            background-color: rgba(23, 162, 184, 0.1);
+        }
+        
+        .payment-type.card {
+            color: var(--primary-color);
+            background-color: rgba(30, 60, 114, 0.1);
+        }
+        
+        .payment-type.check {
+            color: var(--secondary-color);
+            background-color: rgba(42, 82, 152, 0.1);
+        }
+        
+        .payment-type.mixed {
+            color: var(--danger-color);
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+        
+        .invoice-status {
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 4px;
+            padding: 2px 6px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+        
+        .invoice-status.paid {
+            color: var(--success-color);
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+        
+        .invoice-status.partial {
+            color: var(--warning-color);
+            background-color: rgba(255, 193, 7, 0.1);
+        }
+        
+        .invoice-status.unpaid {
+            color: var(--danger-color);
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+        
+        .invoice-number {
+            font-size: 11px;
+            color: #333;
+        }
+        
+        /* Form Sections - Reduced margins */
+        .form-section {
+            margin-bottom: 8px;
+        }
+        
+        .section-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 6px;
+            background: var(--light-color);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+        
+        .form-field {
+            display: flex;
+            align-items: center;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            min-width: 90px;
+            margin-left: 6px;
+            font-size: 12px;
+            color: #333;
+        }
+        
+        .form-input {
+            flex: 1;
+            border: none;
+            border-bottom: 1px solid #ddd;
+            padding: 3px 6px;
+            font-size: 12px;
+            background: transparent;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-bottom: 1px solid var(--primary-color);
+        }
+        
+        .form-select {
+            flex: 1;
+            border: none;
+            border-bottom: 1px solid #ddd;
+            padding: 3px 6px;
+            font-size: 12px;
+            background: transparent;
+        }
+        
+        .form-select:focus {
+            outline: none;
+            border-bottom: 1px solid var(--primary-color);
+        }
+        
+        /* Services Table - Optimized for 5 services */
+        .invoice-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 6px 0;
+            font-size: 11px;
+        }
+        
+        .invoice-table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 4px 6px;
+            text-align: center;
+            font-weight: 600;
+            border: 1px solid #ddd;
+        }
+        
+        .invoice-table td {
+            padding: 4px 6px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        
+        .col-no {
+            width: 30px;
+        }
+        
+        .col-details {
+            text-align: right;
+        }
+        
+        .col-price {
+            width: 90px;
+        }
+        
+        .table-input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            text-align: center;
+            font-size: 11px;
+            padding: 2px;
+        }
+        
+        .table-input:focus {
+            outline: 2px solid var(--primary-color);
+            background: white;
+        }
+        
+        /* Net Amount Section - Reduced padding */
+        .net-amount-section {
+            background: #f0f7ff;
+            border-radius: 6px;
+            padding: 8px;
+            margin: 8px 0;
+            border: 1px solid #d0e3ff;
+            text-align: center;
+        }
+        
+        .net-amount-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 3px;
+        }
+        
+        .net-amount-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        
+        /* Amount in Words Section - Reduced padding */
+        .amount-words-section {
+            background: #f9f9f9;
+            border-radius: 6px;
+            padding: 8px;
+            margin: 8px 0;
+            border: 1px solid #eee;
+        }
+        
+        .amount-words-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 3px;
+        }
+        
+        .amount-words {
+            font-size: 12px;
+            line-height: 1.3;
+            color: #333;
+        }
+        
+        /* Financial Summary - Optimized layout */
+        .financial-summary {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin: 8px 0;
+        }
+        
+        .summary-card {
+            background: var(--light-color);
+            border-radius: 6px;
+            padding: 8px;
+            border-right: 3px solid var(--primary-color);
+        }
+        
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            border-bottom: 1px dashed #ddd;
+            font-size: 12px;
+        }
+        
+        .summary-row:last-child {
+            border-bottom: none;
+        }
+        
+        .summary-label {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .summary-value {
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        
+        /* Signature & QR Code Section - Optimized for 5 services */
+        .signature-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 8px 0;
+            height: 90px;
+        }
+        
+        .signature-box {
+            border: 1px dashed #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .qr-code-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .qr-code-placeholder {
+            width: 80px;
+            height: 80px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 3px;
+            background-image: url('https://z-cdn-media.chatglm.cn/files/f9ef0553-4a30-488f-9005-9a351a5211ff_almouj%20online%20.png?auth_key=1793291227-ceb183e8d2be48f5b5c5ae59952af5c3-0-77e0ad327210c302e899d9039fb05ed3');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            /* Ensure QR code is visible when printing */
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        
+        .qr-code-text {
+            font-size: 9px;
+            color: #666;
+            text-align: center;
+        }
+        
+        /* Footer - Adjusted position */
+        .footer {
+            position: absolute;
+            bottom: 10px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding-top: 8px;
+            border-top: 1px solid #ddd;
+            font-size: 10px;
+        }
+        
+        .contact-info {
+            text-align: center;
+        }
+        
+        .address {
+            font-weight: 600;
+            margin-bottom: 2px;
+            color: #333;
+        }
+        
+        .contact-details {
+            color: #666;
+        }
+        
+        /* Control Buttons */
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn:hover {
+            background: var(--secondary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(30, 60, 114, 0.2);
+        }
+        
+        .btn-secondary {
+            background: var(--secondary-color);
+        }
+        
+        .btn-secondary:hover {
+            background: #3a5fb8;
+        }
+        
+        .btn-add {
+            background: var(--success-color);
+        }
+        
+        .btn-add:hover {
+            background: #218838;
+        }
+        
+        .btn-danger {
+            background: var(--danger-color);
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary-color);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .toast.show {
+            opacity: 1;
+        }
+        
+        /* Dashboard Modal */
+        .dashboard {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+        }
+        
+        .dashboard-content {
+            background: white;
+            margin: 50px auto;
+            width: 90%;
+            max-width: 1200px;
+            height: 80%;
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .dashboard-header {
+            background: var(--primary-color);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .dashboard-body {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .dashboard-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        .filter-select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .invoices-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .invoices-table th, .invoices-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: right;
+        }
+        
+        .invoices-table th {
+            background: var(--light-color);
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        
+        .invoice-actions {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+        
+        .invoice-actions button {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .view-btn {
+            background: #007bff;
+            color: white;
+        }
+        
+        .edit-btn {
+            background: var(--warning-color);
+            color: black;
+        }
+        
+        .delete-btn {
+            background: var(--danger-color);
+            color: white;
+        }
+        
+        .print-btn {
+            background: var(--success-color);
+            color: white;
+        }
+        
+        /* Print Styles - Optimized for 5 services */
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+                background: white;
+            }
+            
+            .invoice-container {
+                width: 100%;
+                height: 100vh;
+                min-height: 0;
+                max-height: none;
+                margin: 0;
+                padding: 8px;
+                box-shadow: none;
+                page-break-inside: avoid;
+                overflow: visible;
+            }
+            
+            .no-print {
+                display: none !important;
+            }
+            
+            .form-input, .table-input, .form-select {
+                border: none;
+                background: transparent;
+                box-shadow: none;
+                outline: none;
+            }
+            
+            /* Ensure QR code is visible when printing */
+            .qr-code-placeholder {
+                background-image: url('https://z-cdn-media.chatglm.cn/files/f9ef0553-4a30-488f-9005-9a351a5211ff_almouj%20online%20.png?auth_key=1793291227-ceb183e8d2be48f5b5c5ae59952af5c3-0-77e0ad327210c302e899d9039fb05ed3') !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+        
+        /* Service Limit Warning */
+        .service-limit-warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 6px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            display: none;
+            font-size: 11px;
+        }
+        
+        .service-limit-warning.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Control Buttons -->
+    <div class="controls no-print">
+        <button class="btn" onclick="saveInvoice()">
+            <i class="fas fa-save"></i>
+            حفظ الفاتورة
+        </button>
+        <button class="btn btn-secondary" onclick="newInvoice()">
+            <i class="fas fa-plus"></i>
+            فاتورة جديدة
+        </button>
+        <button class="btn btn-secondary" onclick="showDashboard()">
+            <i class="fas fa-list"></i>
+            قائمة الفواتير
+        </button>
+        <button class="btn" onclick="window.print()">
+            <i class="fas fa-print"></i>
+            طباعة
+        </button>
+        <button class="btn btn-secondary" onclick="exportAsPDF()">
+            <i class="fas fa-file-pdf"></i>
+            حفظ PDF
+        </button>
+        <button class="btn btn-add" onclick="addService()">
+            <i class="fas fa-plus-circle"></i>
+            إضافة خدمة
+        </button>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div id="toast" class="toast no-print">
+        <span id="toast-icon">✓</span>
+        <span id="toast-message">تمت العملية بنجاح</span>
+    </div>
+    
+    <!-- Dashboard Modal -->
+    <div id="dashboard" class="dashboard">
+        <div class="dashboard-content">
+            <div class="dashboard-header">
+                <h2>قائمة الفواتير</h2>
+                <button onclick="closeDashboard()" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;">&times;</button>
+            </div>
+            <div class="dashboard-body">
+                <div class="dashboard-controls">
+                    <input type="text" class="search-box" placeholder="بحث عن فاتورة..." onkeyup="searchInvoices(this.value)">
+                    <select class="filter-select" id="status-filter" onchange="filterInvoices()">
+                        <option value="all">جميع الحالات</option>
+                        <option value="paid">مدفوعة بالكامل</option>
+                        <option value="partial">مدفوعة جزئياً</option>
+                        <option value="unpaid">غير مدفوعة</option>
+                    </select>
+                    <select class="filter-select" id="payment-filter" onchange="filterInvoices()">
+                        <option value="all">جميع طرق الدفع</option>
+                        <option value="cash">نقدي</option>
+                        <option value="credit">آجل</option>
+                        <option value="bank">تحويل بنكي</option>
+                        <option value="card">بطاقة مصرفية</option>
+                        <option value="check">شيك بنكي</option>
+                        <option value="mixed">جزئي</option>
+                    </select>
+                    <select class="filter-select" id="sort-filter" onchange="sortInvoices()">
+                        <option value="date-desc">الأحدث أولاً</option>
+                        <option value="date-asc">الأقدم أولاً</option>
+                        <option value="amount-desc">الأعلى مبلغاً</option>
+                        <option value="amount-asc">الأقل مبلغاً</option>
+                    </select>
+                </div>
+                <table class="invoices-table">
+                    <thead>
+                        <tr>
+                            <th>رقم الفاتورة</th>
+                            <th>التاريخ</th>
+                            <th>اسم العميل</th>
+                            <th>نوع الدفع</th>
+                            <th>الحالة</th>
+                            <th>المبلغ</th>
+                            <th>الموظف</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invoicesList"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Invoice Form -->
+    <div class="invoice-container" id="invoiceForm">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo-container">
+                <img src="ALMOUJ.png" width="130" alt="Logo">
+            </div>
+            <div class="invoice-meta">
+                <div class="payment-type cash" id="payment-type">نقدي</div>
+                <div class="invoice-status paid" id="invoice-status">مدفوعة بالكامل</div>
+                <div class="invoice-number">رقم: <span id="invoice-number-display">INV-2024-001</span></div>
+            </div>
+            <div class="company-info">
+                <div class="company-name-ar">شركة الموج</div>
+                <div class="company-subtitle-ar">العامة للمعارض و المؤتمرات الدولية</div>
+                <div class="company-name-en">Al Mouj Exhibitions & Conferences</div>
+            </div>
+        </header>
+        
+        <!-- Invoice Info -->
+        <div class="form-section">
+            <div class="section-title">معلومات الفاتورة</div>
+            <div class="form-grid">
+                <div class="form-field">
+                    <span class="form-label">رقم الفاتورة:</span>
+                    <input type="text" class="form-input" id="invoice-number" value="INV-2024-001">
+                </div>
+                <div class="form-field">
+                    <span class="form-label">التاريخ:</span>
+                    <input type="date" class="form-input" id="invoice-date">
+                </div>
+                <div class="form-field">
+                    <span class="form-label">نوع الدفع:</span>
+                    <select class="form-select" id="payment-type-select" onchange="updatePaymentType()">
+                        <option value="cash">نقدي</option>
+                        <option value="credit">آجل</option>
+                        <option value="bank">تحويل بنكي</option>
+                        <option value="card">بطاقة مصرفية</option>
+                        <option value="check">شيك بنكي</option>
+                        <option value="mixed">جزئي (نقدي + آجل)</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <span class="form-label">العملة:</span>
+                    <input type="text" class="form-input" id="currency" value="دينار عراقي">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Client Info -->
+        <div class="form-section">
+            <div class="section-title">معلومات العميل</div>
+            <div class="form-grid">
+                <div class="form-field">
+                    <span class="form-label">الاسم الثلاثي:</span>
+                    <input type="text" class="form-input" id="client-name" placeholder="اسم العميل">
+                </div>
+                <div class="form-field">
+                    <span class="form-label">الهاتف:</span>
+                    <input type="text" class="form-input" id="client-phone" placeholder="رقم الهاتف">
+                </div>
+                <div class="form-field">
+                    <span class="form-label">المحافظة:</span>
+                    <input type="text" class="form-input" id="client-province" placeholder="المحافظة">
+                </div>
+                <div class="form-field">
+                    <span class="form-label">الشركة:</span>
+                    <input type="text" class="form-input" id="client-company" placeholder="اسم الشركة">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Services -->
+        <div class="form-section">
+            <div class="section-title">تفاصيل الخدمات</div>
+            <div class="service-limit-warning" id="service-limit-warning">
+                لقد وصلت إلى الحد الأقصى لعدد الخدمات (5 خدمات) الذي يمكن طباعته في صفحة واحدة.
+            </div>
+            <table class="invoice-table">
+                <thead>
+                    <tr>
+                        <th class="col-no">ت</th>
+                        <th class="col-details">الخدمة</th>
+                        <th class="col-price">المبلغ</th>
+                        <th class="no-print"></th>
+                    </tr>
+                </thead>
+                <tbody id="products-body"></tbody>
+            </table>
+        </div>
+        
+        <!-- Net Amount Section -->
+        <div class="net-amount-section">
+            <div class="net-amount-label">صافي الفاتورة</div>
+            <div class="net-amount-value" id="net-amount">0</div>
+        </div>
+        
+        <!-- Amount in Words Section -->
+        <div class="amount-words-section">
+            <div class="amount-words-label">المبلغ كتابة</div>
+            <div class="amount-words" id="amount-in-words">سيظهر المبلغ كتابة هنا...</div>
+        </div>
+        
+        <!-- Financial Summary -->
+        <div class="form-section">
+            <div class="section-title">الملخص المالي</div>
+            <div class="financial-summary">
+                <div class="summary-card">
+                    <div class="summary-row">
+                        <span class="summary-label">الرصيد السابق:</span>
+                        <input type="number" class="form-input" id="previous-balance" value="0" onchange="updateCalculations()" style="text-align: left; font-weight: 700;">
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">الرصيد الحالي:</span>
+                        <span class="summary-value" id="current-balance">0</span>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-row">
+                        <span class="summary-label">دفعة نقدية:</span>
+                        <input type="number" class="form-input" id="cash-payment" value="0" onchange="updateCalculations()" style="text-align: left; font-weight: 700;">
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">باقي للدفع:</span>
+                        <span class="summary-value" id="remaining-payment">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Signature & QR Code Section -->
+        <div class="form-section">
+            <div class="section-title">التوقيع ورمز التواصل</div>
+            <div class="signature-section">
+                <div class="signature-box">توقيع العميل</div>
+                <div class="qr-code-container">
+                    <div class="qr-code-placeholder"></div>
+                    <div class="qr-code-text">امسح للتواصل معنا</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="contact-info">
+                <div class="address">كربلاء المقدسة - الروضتين - الشارع الشمالي الجديد</div>
+                <div class="contact-details">07801068802 | info@almouj.online | almouj.online</div>
+            </div>
+        </footer>
+    </div>
+    
+    <script>
+        // Global Variables
+        let currentInvoiceId = null;
+        let invoices = [];
+        const STORAGE_KEY = 'almouj_invoices';
+        const MAX_SERVICES_FOR_SINGLE_PAGE = 5; // Set to 5 as requested
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadInvoices();
+            setTodayDate();
+            generateNextInvoiceNumber();
+            addInitialService();
+            
+            document.getElementById('invoice-number').addEventListener('input', () => {
+                document.getElementById('invoice-number-display').textContent = document.getElementById('invoice-number').value;
+            });
+        });
+        
+        // Load invoices from localStorage
+        function loadInvoices() {
+            try {
+                const savedInvoices = localStorage.getItem(STORAGE_KEY);
+                if (savedInvoices) {
+                    invoices = JSON.parse(savedInvoices);
+                }
+            } catch (error) {
+                console.error('Error loading invoices:', error);
+                invoices = [];
+            }
+        }
+        
+        // Save invoices to localStorage
+        function saveInvoices() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(invoices));
+                return true;
+            } catch (error) {
+                console.error('Error saving invoices:', error);
+                showToast('حدث خطأ أثناء حفظ الفواتير', 'error');
+                return false;
+            }
+        }
+        
+        function setTodayDate() {
+            const today = new Date();
+            document.getElementById('invoice-date').value = today.toISOString().split('T')[0];
+        }
+        
+        function generateNextInvoiceNumber() {
+            const year = new Date().getFullYear();
+            const next = invoices.length + 1;
+            const val = `INV-${year}-${String(next).padStart(3,'0')}`;
+            document.getElementById('invoice-number').value = val;
+            document.getElementById('invoice-number-display').textContent = val;
+        }
+        
+        function addInitialService() {
+            addService();
+        }
+        
+        // Update Payment Type
+        function updatePaymentType() {
+            const paymentType = document.getElementById('payment-type-select').value;
+            const paymentTypeElement = document.getElementById('payment-type');
+            
+            // Remove all classes
+            paymentTypeElement.className = 'payment-type';
+            
+            // Add appropriate class and text
+            switch(paymentType) {
+                case 'cash':
+                    paymentTypeElement.textContent = 'نقدي';
+                    paymentTypeElement.classList.add('cash');
+                    break;
+                case 'credit':
+                    paymentTypeElement.textContent = 'آجل';
+                    paymentTypeElement.classList.add('credit');
+                    break;
+                case 'bank':
+                    paymentTypeElement.textContent = 'تحويل بنكي';
+                    paymentTypeElement.classList.add('bank');
+                    break;
+                case 'card':
+                    paymentTypeElement.textContent = 'بطاقة مصرفية';
+                    paymentTypeElement.classList.add('card');
+                    break;
+                case 'check':
+                    paymentTypeElement.textContent = 'شيك بنكي';
+                    paymentTypeElement.classList.add('check');
+                    break;
+                case 'mixed':
+                    paymentTypeElement.textContent = 'جزئي (نقدي + آجل)';
+                    paymentTypeElement.classList.add('mixed');
+                    break;
+            }
+            
+            updateCalculations();
+        }
+        
+        // Services CRUD
+        function addService(description = '', amount = 0) {
+            const tbody = document.getElementById('products-body');
+            const currentServiceCount = tbody.children.length;
+            
+            // Check if we're approaching the limit
+            if (currentServiceCount >= MAX_SERVICES_FOR_SINGLE_PAGE - 1) {
+                document.getElementById('service-limit-warning').classList.add('show');
+            } else {
+                document.getElementById('service-limit-warning').classList.remove('show');
+            }
+            
+            // Prevent adding more services if we've reached the absolute maximum
+            if (currentServiceCount >= MAX_SERVICES_FOR_SINGLE_PAGE) {
+                showToast(`لقد وصلت إلى الحد الأقصى لعدد الخدمات (${MAX_SERVICES_FOR_SINGLE_PAGE}) الذي يمكن طباعته في صفحة واحدة`, 'warning');
+                return;
+            }
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${currentServiceCount + 1}</td>
+                <td class="col-details"><input type="text" class="table-input" value="${description}" placeholder="وصف الخدمة" oninput="updateCalculations()"></td>
+                <td><input type="number" class="table-input" value="${amount}" placeholder="0" oninput="updateCalculations()"></td>
+                <td class="no-print"><button class="btn btn-danger" style="padding:2px 6px;font-size:11px;" onclick="removeService(this)"><i class="fas fa-trash"></i></button></td>
+            `;
+            tbody.appendChild(row);
+            updateCalculations();
+        }
+        
+        function removeService(btn) {
+            btn.closest('tr').remove();
+            renumberServices();
+            checkServiceLimit();
+            updateCalculations();
+        }
+        
+        function renumberServices() {
+            document.querySelectorAll('#products-body tr').forEach((tr, idx) => tr.cells[0].textContent = idx + 1);
+        }
+        
+        function checkServiceLimit() {
+            const tbody = document.getElementById('products-body');
+            const currentServiceCount = tbody.children.length;
+            
+            if (currentServiceCount >= MAX_SERVICES_FOR_SINGLE_PAGE - 1) {
+                document.getElementById('service-limit-warning').classList.add('show');
+            } else {
+                document.getElementById('service-limit-warning').classList.remove('show');
+            }
+        }
+        
+        // Calculations & Arabic Words
+        function updateCalculations() {
+            let total = 0;
+            document.querySelectorAll('#products-body input[type="number"]').forEach(inp => total += parseFloat(inp.value) || 0);
+            
+            // Get values from inputs
+            const previousBalance = parseFloat(document.getElementById('previous-balance').value) || 0;
+            const cashPayment = parseFloat(document.getElementById('cash-payment').value) || 0;
+            
+            // Calculate remaining payment
+            const remainingPayment = total - cashPayment;
+            
+            // Calculate current balance
+            const currentBalance = previousBalance + remainingPayment;
+            
+            // Update UI
+            document.getElementById('net-amount').textContent = total.toLocaleString();
+            document.getElementById('remaining-payment').textContent = remainingPayment.toLocaleString();
+            document.getElementById('current-balance').textContent = currentBalance.toLocaleString();
+            
+            // Update payment status
+            let statusText, statusClass;
+            if (remainingPayment === 0) {
+                statusText = 'مدفوعة بالكامل';
+                statusClass = 'paid';
+            } else if (cashPayment > 0) {
+                statusText = 'مدفوعة جزئياً';
+                statusClass = 'partial';
+            } else {
+                statusText = 'غير مدفوعة';
+                statusClass = 'unpaid';
+            }
+            
+            const statusElement = document.getElementById('invoice-status');
+            statusElement.textContent = statusText;
+            statusElement.className = 'invoice-status ' + statusClass;
+            
+            // Update amount in words
+            document.getElementById('amount-in-words').textContent = convertToArabicWords(total);
+        }
+        
+        function convertToArabicWords(num) {
+            if (num === 0) return "صفر دينار عراقي";
+            const ones = ["","واحد","اثنان","ثلاثة","أربعة","خمسة","ستة","سبعة","ثمانية","تسعة"];
+            const teens = ["عشرة","أحد عشر","اثنا عشر","ثلاثة عشر","أربعة عشر","خمسة عشر","ستة عشر","سبعة عشر","ثمانية عشر","تسعة عشر"];
+            const tens = ["","","عشرون","ثلاثون","أربعون","خمسون","ستون","سبعون","ثمانون","تسعون"];
+            const hundreds = ["","مائة","مئتان","ثلاثمائة","أربعمائة","خمسمائة","ستمائة","سبعمائة","ثمانمائة","تسعمائة"];
+            
+            function convertLessThanThousand(n) {
+                if (n === 0) return "";
+                let res = "";
+                const h = Math.floor(n / 100);
+                if (h > 0) res += hundreds[h] + (n % 100 !== 0 ? " و" : "");
+                n %= 100;
+                if (n >= 20) {
+                    const t = Math.floor(n / 10);
+                    const o = n % 10;
+                    res += (o > 0 ? ones[o] + " و" : "") + tens[t];
+                } else if (n >= 10) {
+                    res += teens[n - 10];
+                } else if (n > 0) {
+                    res += ones[n];
+                }
+                return res;
+            }
+            
+            let parts = [];
+            if (num >= 1000000) {
+                const m = Math.floor(num / 1000000);
+                parts.push(m === 1 ? "مليون" : m === 2 ? "مليونان" : convertLessThanThousand(m) + " مليون");
+                num %= 1000000;
+            }
+            if (num >= 1000) {
+                const th = Math.floor(num / 1000);
+                parts.push(th === 1 ? "ألف" : th === 2 ? "ألفان" : convertLessThanThousand(th) + " ألف");
+                num %= 1000;
+            }
+            if (num > 0) parts.push(convertLessThanThousand(num));
+            return "فقط " + parts.join(" و ") + " دينار عراقي لا غير";
+        }
+        
+        // Collect Data
+        function collectFormData() {
+            const services = [];
+            document.querySelectorAll('#products-body tr').forEach(tr => {
+                const desc = tr.cells[1].querySelector('input').value.trim();
+                const amount = parseFloat(tr.cells[2].querySelector('input').value) || 0;
+                if (desc) services.push({ description: desc, amount });
+            });
+            
+            const previousBalance = parseFloat(document.getElementById('previous-balance').value) || 0;
+            const cashPayment = parseFloat(document.getElementById('cash-payment').value) || 0;
+            const total = services.reduce((a, s) => a + s.amount, 0);
+            const remainingPayment = total - cashPayment;
+            const currentBalance = previousBalance + remainingPayment;
+            
+            let status;
+            if (remainingPayment === 0) {
+                status = 'paid';
+            } else if (cashPayment > 0) {
+                status = 'partial';
+            } else {
+                status = 'unpaid';
+            }
+            
+            return {
+                id: currentInvoiceId || Date.now(),
+                invoiceNumber: document.getElementById('invoice-number').value,
+                date: document.getElementById('invoice-date').value,
+                paymentType: document.getElementById('payment-type-select').value,
+                currency: document.getElementById('currency').value,
+                clientName: document.getElementById('client-name').value,
+                clientPhone: document.getElementById('client-phone').value,
+                clientProvince: document.getElementById('client-province').value,
+                clientCompany: document.getElementById('client-company').value,
+                employeeName: document.getElementById('employee-name').value,
+                deliveryMethod: document.getElementById('delivery-method').value,
+                services,
+                total,
+                previousBalance,
+                cashPayment,
+                remainingPayment,
+                currentBalance,
+                status,
+                amountInWords: document.getElementById('amount-in-words').textContent,
+                notes: document.getElementById('notes').value,
+                createdAt: new Date().toISOString()
+            };
+        }
+        
+        // Save Invoice
+        function saveInvoice() {
+            const data = collectFormData();
+            if (!data.clientName || !data.services.length) return showToast('يرجى تعبئة اسم العميل وإضافة خدمات', 'warning');
+            
+            const idx = invoices.findIndex(inv => inv.id === data.id);
+            if (idx === -1) {
+                invoices.push(data);
+            } else {
+                invoices[idx] = data;
+            }
+            
+            if (saveInvoices()) {
+                currentInvoiceId = data.id;
+                showToast('✅ تم حفظ الفاتورة بنجاح');
+            }
+        }
+        
+        // New Invoice
+        function newInvoice() {
+            if (confirm('فاتورة جديدة؟ سيتم مسح البيانات الحالية')) {
+                currentInvoiceId = null;
+                document.getElementById('invoiceForm').reset();
+                document.getElementById('products-body').innerHTML = '';
+                setTodayDate();
+                generateNextInvoiceNumber();
+                addInitialService();
+                updatePaymentType();
+                document.getElementById('service-limit-warning').classList.remove('show');
+            }
+        }
+        
+        // Dashboard Functions
+        function showDashboard() {
+            loadInvoicesList();
+            document.getElementById('dashboard').style.display = 'block';
+        }
+        
+        function closeDashboard() {
+            document.getElementById('dashboard').style.display = 'none';
+        }
+        
+        function loadInvoicesList() {
+            const tbody = document.getElementById('invoicesList');
+            tbody.innerHTML = '';
+            
+            // Sort invoices by date (newest first)
+            const sortedInvoices = [...invoices].sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            sortedInvoices.forEach(inv => {
+                const tr = document.createElement('tr');
+                
+                // Get payment type text
+                let paymentTypeText;
+                switch(inv.paymentType) {
+                    case 'cash': paymentTypeText = 'نقدي'; break;
+                    case 'credit': paymentTypeText = 'آجل'; break;
+                    case 'bank': paymentTypeText = 'تحويل بنكي'; break;
+                    case 'card': paymentTypeText = 'بطاقة مصرفية'; break;
+                    case 'check': paymentTypeText = 'شيك بنكي'; break;
+                    case 'mixed': paymentTypeText = 'جزئي'; break;
+                    default: paymentTypeText = inv.paymentType;
+                }
+                
+                // Get status text
+                let statusText, statusClass;
+                switch(inv.status) {
+                    case 'paid': 
+                        statusText = 'مدفوعة بالكامل'; 
+                        statusClass = 'paid'; 
+                        break;
+                    case 'partial': 
+                        statusText = 'مدفوعة جزئياً'; 
+                        statusClass = 'partial'; 
+                        break;
+                    case 'unpaid': 
+                        statusText = 'غير مدفوعة'; 
+                        statusClass = 'unpaid'; 
+                        break;
+                    default: 
+                        statusText = 'غير محدد'; 
+                        statusClass = '';
+                }
+                
+                tr.innerHTML = `
+                    <td>${inv.invoiceNumber}</td>
+                    <td>${new Date(inv.date).toLocaleDateString('ar-IQ')}</td>
+                    <td>${inv.clientName}</td>
+                    <td>${paymentTypeText}</td>
+                    <td><span class="invoice-status ${statusClass}">${statusText}</span></td>
+                    <td>${inv.total.toLocaleString()} ${inv.currency}</td>
+                    <td>${inv.employeeName || '-'}</td>
+                    <td>
+                        <div class="invoice-actions">
+                            <button class="view-btn" onclick="viewInvoice(${inv.id})" title="عرض"><i class="fas fa-eye"></i></button>
+                            <button class="edit-btn" onclick="editInvoice(${inv.id})" title="تعديل"><i class="fas fa-edit"></i></button>
+                            <button class="delete-btn" onclick="deleteInvoice(${inv.id})" title="حذف"><i class="fas fa-trash"></i></button>
+                            <button class="print-btn" onclick="printInvoiceById(${inv.id})" title="طباعة"><i class="fas fa-print"></i></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        function searchInvoices(term) {
+            const filteredInvoices = invoices.filter(inv =>
+                inv.clientName.includes(term) ||
+                inv.invoiceNumber.includes(term) ||
+                inv.clientPhone.includes(term) ||
+                (inv.employeeName && inv.employeeName.includes(term))
+            );
+            
+            const tbody = document.getElementById('invoicesList');
+            tbody.innerHTML = '';
+            
+            filteredInvoices.forEach(inv => {
+                const tr = document.createElement('tr');
+                
+                // Get payment type text
+                let paymentTypeText;
+                switch(inv.paymentType) {
+                    case 'cash': paymentTypeText = 'نقدي'; break;
+                    case 'credit': paymentTypeText = 'آجل'; break;
+                    case 'bank': paymentTypeText = 'تحويل بنكي'; break;
+                    case 'card': paymentTypeText = 'بطاقة مصرفية'; break;
+                    case 'check': paymentTypeText = 'شيك بنكي'; break;
+                    case 'mixed': paymentTypeText = 'جزئي'; break;
+                    default: paymentTypeText = inv.paymentType;
+                }
+                
+                // Get status text
+                let statusText, statusClass;
+                switch(inv.status) {
+                    case 'paid': 
+                        statusText = 'مدفوعة بالكامل'; 
+                        statusClass = 'paid'; 
+                        break;
+                    case 'partial': 
+                        statusText = 'مدفوعة جزئياً'; 
+                        statusClass = 'partial'; 
+                        break;
+                    case 'unpaid': 
+                        statusText = 'غير مدفوعة'; 
+                        statusClass = 'unpaid'; 
+                        break;
+                    default: 
+                        statusText = 'غير محدد'; 
+                        statusClass = '';
+                }
+                
+                tr.innerHTML = `
+                    <td>${inv.invoiceNumber}</td>
+                    <td>${new Date(inv.date).toLocaleDateString('ar-IQ')}</td>
+                    <td>${inv.clientName}</td>
+                    <td>${paymentTypeText}</td>
+                    <td><span class="invoice-status ${statusClass}">${statusText}</span></td>
+                    <td>${inv.total.toLocaleString()} ${inv.currency}</td>
+                    <td>${inv.employeeName || '-'}</td>
+                    <td>
+                        <div class="invoice-actions">
+                            <button class="view-btn" onclick="viewInvoice(${inv.id})" title="عرض"><i class="fas fa-eye"></i></button>
+                            <button class="edit-btn" onclick="editInvoice(${inv.id})" title="تعديل"><i class="fas fa-edit"></i></button>
+                            <button class="delete-btn" onclick="deleteInvoice(${inv.id})" title="حذف"><i class="fas fa-trash"></i></button>
+                            <button class="print-btn" onclick="printInvoiceById(${inv.id})" title="طباعة"><i class="fas fa-print"></i></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        function filterInvoices() {
+            const statusFilter = document.getElementById('status-filter').value;
+            const paymentFilter = document.getElementById('payment-filter').value;
+            
+            let filteredInvoices = invoices;
+            
+            if (statusFilter !== 'all') {
+                filteredInvoices = filteredInvoices.filter(inv => inv.status === statusFilter);
+            }
+            
+            if (paymentFilter !== 'all') {
+                filteredInvoices = filteredInvoices.filter(inv => inv.paymentType === paymentFilter);
+            }
+            
+            const tbody = document.getElementById('invoicesList');
+            tbody.innerHTML = '';
+            
+            filteredInvoices.forEach(inv => {
+                const tr = document.createElement('tr');
+                
+                // Get payment type text
+                let paymentTypeText;
+                switch(inv.paymentType) {
+                    case 'cash': paymentTypeText = 'نقدي'; break;
+                    case 'credit': paymentTypeText = 'آجل'; break;
+                    case 'bank': paymentTypeText = 'تحويل بنكي'; break;
+                    case 'card': paymentTypeText = 'بطاقة مصرفية'; break;
+                    case 'check': paymentTypeText = 'شيك بنكي'; break;
+                    case 'mixed': paymentTypeText = 'جزئي'; break;
+                    default: paymentTypeText = inv.paymentType;
+                }
+                
+                // Get status text
+                let statusText, statusClass;
+                switch(inv.status) {
+                    case 'paid': 
+                        statusText = 'مدفوعة بالكامل'; 
+                        statusClass = 'paid'; 
+                        break;
+                    case 'partial': 
+                        statusText = 'مدفوعة جزئياً'; 
+                        statusClass = 'partial'; 
+                        break;
+                    case 'unpaid': 
+                        statusText = 'غير مدفوعة'; 
+                        statusClass = 'unpaid'; 
+                        break;
+                    default: 
+                        statusText = 'غير محدد'; 
+                        statusClass = '';
+                }
+                
+                tr.innerHTML = `
+                    <td>${inv.invoiceNumber}</td>
+                    <td>${new Date(inv.date).toLocaleDateString('ar-IQ')}</td>
+                    <td>${inv.clientName}</td>
+                    <td>${paymentTypeText}</td>
+                    <td><span class="invoice-status ${statusClass}">${statusText}</span></td>
+                    <td>${inv.total.toLocaleString()} ${inv.currency}</td>
+                    <td>${inv.employeeName || '-'}</td>
+                    <td>
+                        <div class="invoice-actions">
+                            <button class="view-btn" onclick="viewInvoice(${inv.id})" title="عرض"><i class="fas fa-eye"></i></button>
+                            <button class="edit-btn" onclick="editInvoice(${inv.id})" title="تعديل"><i class="fas fa-edit"></i></button>
+                            <button class="delete-btn" onclick="deleteInvoice(${inv.id})" title="حذف"><i class="fas fa-trash"></i></button>
+                            <button class="print-btn" onclick="printInvoiceById(${inv.id})" title="طباعة"><i class="fas fa-print"></i></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        function sortInvoices() {
+            const sortFilter = document.getElementById('sort-filter').value;
+            let sortedInvoices = [...invoices];
+            
+            switch(sortFilter) {
+                case 'date-desc':
+                    sortedInvoices.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    break;
+                case 'date-asc':
+                    sortedInvoices.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    break;
+                case 'amount-desc':
+                    sortedInvoices.sort((a, b) => b.total - a.total);
+                    break;
+                case 'amount-asc':
+                    sortedInvoices.sort((a, b) => a.total - b.total);
+                    break;
+            }
+            
+            const tbody = document.getElementById('invoicesList');
+            tbody.innerHTML = '';
+            
+            sortedInvoices.forEach(inv => {
+                const tr = document.createElement('tr');
+                
+                // Get payment type text
+                let paymentTypeText;
+                switch(inv.paymentType) {
+                    case 'cash': paymentTypeText = 'نقدي'; break;
+                    case 'credit': paymentTypeText = 'آجل'; break;
+                    case 'bank': paymentTypeText = 'تحويل بنكي'; break;
+                    case 'card': paymentTypeText = 'بطاقة مصرفية'; break;
+                    case 'check': paymentTypeText = 'شيك بنكي'; break;
+                    case 'mixed': paymentTypeText = 'جزئي'; break;
+                    default: paymentTypeText = inv.paymentType;
+                }
+                
+                // Get status text
+                let statusText, statusClass;
+                switch(inv.status) {
+                    case 'paid': 
+                        statusText = 'مدفوعة بالكامل'; 
+                        statusClass = 'paid'; 
+                        break;
+                    case 'partial': 
+                        statusText = 'مدفوعة جزئياً'; 
+                        statusClass = 'partial'; 
+                        break;
+                    case 'unpaid': 
+                        statusText = 'غير مدفوعة'; 
+                        statusClass = 'unpaid'; 
+                        break;
+                    default: 
+                        statusText = 'غير محدد'; 
+                        statusClass = '';
+                }
+                
+                tr.innerHTML = `
+                    <td>${inv.invoiceNumber}</td>
+                    <td>${new Date(inv.date).toLocaleDateString('ar-IQ')}</td>
+                    <td>${inv.clientName}</td>
+                    <td>${paymentTypeText}</td>
+                    <td><span class="invoice-status ${statusClass}">${statusText}</span></td>
+                    <td>${inv.total.toLocaleString()} ${inv.currency}</td>
+                    <td>${inv.employeeName || '-'}</td>
+                    <td>
+                        <div class="invoice-actions">
+                            <button class="view-btn" onclick="viewInvoice(${inv.id})" title="عرض"><i class="fas fa-eye"></i></button>
+                            <button class="edit-btn" onclick="editInvoice(${inv.id})" title="تعديل"><i class="fas fa-edit"></i></button>
+                            <button class="delete-btn" onclick="deleteInvoice(${inv.id})" title="حذف"><i class="fas fa-trash"></i></button>
+                            <button class="print-btn" onclick="printInvoiceById(${inv.id})" title="طباعة"><i class="fas fa-print"></i></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        function viewInvoice(id) {
+            const inv = invoices.find(i => i.id === id);
+            if (inv) {
+                loadInvoiceToForm(inv);
+                closeDashboard();
+            }
+        }
+        
+        function editInvoice(id) {
+            const inv = invoices.find(i => i.id === id);
+            if (inv) {
+                loadInvoiceToForm(inv);
+                currentInvoiceId = id;
+                closeDashboard();
+            }
+        }
+        
+        function deleteInvoice(id) {
+            if (confirm('تأكيد الحذف؟')) {
+                invoices = invoices.filter(i => i.id !== id);
+                if (saveInvoices()) {
+                    loadInvoicesList();
+                    showToast('🗑️ تم الحذف');
+                }
+            }
+        }
+        
+        function printInvoiceById(id) {
+            const inv = invoices.find(i => i.id === id);
+            if (inv) {
+                loadInvoiceToForm(inv);
+                setTimeout(() => window.print(), 300);
+            }
+        }
+        
+        function loadInvoiceToForm(inv) {
+            document.getElementById('invoice-number').value = inv.invoiceNumber;
+            document.getElementById('invoice-number-display').textContent = inv.invoiceNumber;
+            document.getElementById('invoice-date').value = inv.date;
+            document.getElementById('payment-type-select').value = inv.paymentType;
+            updatePaymentType();
+            document.getElementById('currency').value = inv.currency || 'دينار عراقي';
+            document.getElementById('client-name').value = inv.clientName || '';
+            document.getElementById('client-phone').value = inv.clientPhone || '';
+            document.getElementById('client-province').value = inv.clientProvince || '';
+            document.getElementById('client-company').value = inv.clientCompany || '';
+            document.getElementById('employee-name').value = inv.employeeName || '';
+            document.getElementById('delivery-method').value = inv.deliveryMethod || 'personal';
+            document.getElementById('notes').value = inv.notes || '';
+            document.getElementById('previous-balance').value = inv.previousBalance || 0;
+            document.getElementById('cash-payment').value = inv.cashPayment || 0;
+            
+            // services
+            document.getElementById('products-body').innerHTML = '';
+            inv.services.forEach(s => addService(s.description, s.amount));
+            
+            checkServiceLimit();
+            updateCalculations();
+        }
+        
+        // PDF Export
+        async function exportAsPDF() {
+            showToast('جاري إنشاء PDF...');
+            const element = document.querySelector('.invoice-container');
+            const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+            const imgWidth = 210;
+            const pageHeight = 295;
+            const imgHeight = canvas.height * imgWidth / canvas.width;
+            let heightLeft = imgHeight;
+            let position = 0;
+            
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+            
+            while (heightLeft >= 0) {
+                position = heightLeft - imgHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+            }
+            const fileName = `${document.getElementById('invoice-number').value || 'فاتورة'}.pdf`;
+            pdf.save(fileName);
+            showToast('✅ تم تصدير PDF');
+        }
+        
+        // Toast Helper
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            const message = document.getElementById('toast-message');
+            message.textContent = msg;
+            icon.textContent = type === 'success' ? '✓' : type === 'warning' ? '⚠️' : '✗';
+            toast.style.background = type === 'success' ? '#1e3c72' : type === 'warning' ? '#f0ad4e' : '#d9534f';
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+        
+        // Close Dashboard on Outside Click
+        document.getElementById('dashboard').addEventListener('click', e => {
+            if (e.target === e.currentTarget) closeDashboard();
+        });
+
+        // ===== بداية: إضافة تسجيل Service Worker لـ PWA =====
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+              .then(registration => {
+                console.log('ServiceWorker registration successful with scope: ', registration.scope);
+              })
+              .catch(error => {
+                console.log('ServiceWorker registration failed: ', error);
+              });
+          });
+        }
+        // ===== نهاية: إضافة تسجيل Service Worker لـ PWA =====
+
+    </script>
+</body>
+</html>
